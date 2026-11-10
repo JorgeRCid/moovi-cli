@@ -1,6 +1,6 @@
 ---
 name: Moovi
-description: Consulta Moovi (Moodle de la Universidade de Vigo) en solo lectura mediante la CLI `moovi`: identidad, cursos, contenidos, alumnado y tareas. Úsalo cuando el usuario pida información de sus asignaturas en Moovi.
+description: Consulta Moovi (Moodle de la Universidade de Vigo) en solo lectura mediante la CLI `moovi`: identidad, cursos, contenidos, alumnado, tareas y calificaciones. Úsalo cuando el usuario pida información de sus asignaturas en Moovi.
 ---
 
 # Moovi
@@ -38,6 +38,7 @@ CLI de solo lectura sobre la API oficial de Moovi. No usa scraping y no modifica
    moovi contents <course_id> --json
    moovi participants <course_id> --json   # incluye groups y roles
    moovi assignments <course_id> --json
+   moovi grades <course_id> --format raw > notas.csv
    moovi announcements <course_id> --json   # foro de noticias de Moovi
    moovi announcement-content <announcement_id> --json
    ```
@@ -50,6 +51,7 @@ CLI de solo lectura sobre la API oficial de Moovi. No usa scraping y no modifica
 - No pidas filtros nuevos: usa `--format raw` (CSV) con `grep`/`sort`/`cut`/`awk`, o `--json` con `jq`. Hay ejemplos en la sección “Filosofía” del README.
 - Usa `--limit N` en listados largos.
 - No incluyas correos del alumnado salvo que el usuario lo pida: `participants` los omite por defecto; `--emails` los añade.
+- `grades` descarga calificaciones de todo el alumnado. Si el usuario quiere el fichero, usa `--format raw > notas.csv`; no vuelques la tabla completa en el chat salvo que lo pida.
 - No consultes datos personales que no necesites (GDPR).
 - No intentes escrituras: no existen comandos para ello.
 - `announcements` es específico del foro de noticias de Moovi. Si el comando pide `--forum-id`, usa el id de un candidato; no inventes ids.

@@ -15,6 +15,7 @@ _PERMISSION_CODES = frozenset(
     {
         "accessexception",
         "nopermissions",
+        "nopermissiontoviewgrades",
         "required_capability_exception",
         "webservice_access_exception",
     }

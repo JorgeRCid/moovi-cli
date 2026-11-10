@@ -4,6 +4,7 @@ from moovi.logic.services.announcements import AnnouncementService
 from moovi.logic.services.assignments import AssignmentService
 from moovi.logic.services.auth import AuthService
 from moovi.logic.services.catalog import CatalogService
+from moovi.logic.services.grades import GradeService
 from moovi.logic.services.people import PeopleService
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "AssignmentService",
     "AuthService",
     "CatalogService",
+    "GradeService",
     "PeopleService",
 ]

@@ -25,6 +25,7 @@ from moovi.domain.models import (
     Assignment,
     Course,
     Forum,
+    Gradebook,
     Participant,
     Section,
     SiteInfo,
@@ -38,6 +39,7 @@ from moovi.network.mappers import (
     map_assignments,
     map_courses,
     map_forums,
+    map_gradebook,
     map_participants,
     map_sections,
     map_site_info,
@@ -55,6 +57,7 @@ READ_ONLY_FUNCTIONS = frozenset(
         "core_course_get_contents",
         "core_enrol_get_enrolled_users",
         "mod_assign_get_assignments",
+        "gradereport_user_get_grade_items",
         "mod_forum_get_forums_by_courses",
         "mod_forum_get_forum_discussions",
         "mod_forum_get_discussion_post",
@@ -170,6 +173,15 @@ class MoodleRestClient(MoodleGateway):
             token, "mod_assign_get_assignments", courseids=list(course_ids)
         )
         return map_assignments(data)
+
+    def grade_items(self, token: Token, course_id: int) -> Gradebook:
+        data = self.call(
+            token,
+            "gradereport_user_get_grade_items",
+            courseid=course_id,
+            userid=0,
+        )
+        return map_gradebook(data)
 
     def course_forums(self, token: Token, course_id: int) -> list[Forum]:
         data = self.call(

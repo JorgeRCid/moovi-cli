@@ -2,7 +2,7 @@
 
 Herramienta de línea de comandos para consultar **Moovi**, la plataforma Moodle de la Universidade de Vigo, en **modo de solo lectura** y a través de su API oficial de servicios web.
 
-Permite listar tus cursos, ver el contenido de una asignatura, consultar el alumnado matriculado, revisar las tareas y leer el foro de noticias. No hace *scraping* y no modifica nada en Moovi.
+Permite listar tus cursos, ver el contenido de una asignatura, consultar el alumnado matriculado, revisar las tareas, descargar las calificaciones y leer el foro de noticias. No hace *scraping* y no modifica nada en Moovi.
 
 > Documentación técnica: [`docs/architecture.md`](docs/architecture.md).
 
@@ -87,6 +87,7 @@ moovi courses
 moovi contents 12345
 moovi participants 12345
 moovi assignments 12345
+moovi grades 12345 --format raw > notas.csv
 moovi announcements 12345
 
 # Para componer con herramientas Unix
@@ -213,6 +214,33 @@ ID   NOMBRE       ENTREGA              CIERRE  NOTA MÁX.
 501  Práctica 1   2024-01-01 00:00 UTC  —       100
 ```
 
+### `moovi grades COURSE_ID`
+
+Descarga el libro de calificaciones de un curso en una sola tabla: una fila por alumno y una columna por calificación.
+
+```bash
+moovi grades 12345
+moovi grades 12345 --format raw > notas.csv
+moovi grades 12345 --all-items --format raw > notas.csv
+moovi grades 12345 --json
+```
+
+Las primeras columnas son `id`, `id_number`, `last_name`, `first_name`, `groups`; después va una columna por cada calificación del libro, con el nombre que tiene en Moovi. Los grupos se copian de `participants`: en JSON son una lista de objetos `{id, name}` y en CSV van separados por `;`. Se incluyen las actividades, los elementos manuales, las categorías y el total del curso. Moodle no devuelve el nombre de las categorías en esta función, así que se muestran como `Categoría <id>`; el total del curso se muestra como `Total del curso`.
+
+Por defecto solo aparecen las calificaciones que tienen nota en al menos un alumno. Con `--all-items` se incluyen todas las calificaciones creadas en el libro, aunque estén vacías.
+
+```csv
+id,id_number,last_name,first_name,groups,Práctica 1,Examen,Total del curso
+7,297275,Alumna,Ana,PROII_1 (Laboratorio);MODALIDAD_GLOBAL,8.5,0,4.25
+9,654321,Grupo,Sin,,,7,7
+```
+
+En CSV, las notas numéricas se exportan con punto decimal (`8.5`) a partir del valor bruto de Moodle, no del texto formateado, para que no dependan del idioma de la interfaz. Si una calificación no tiene valor numérico (por ejemplo, una escala), se usa el texto limpio de Moodle.
+
+En JSON cada calificación es un objeto con `raw`, `formatted`, `hidden` y `overridden`. Los nombres de calificación repetidos se desambiguan con un sufijo.
+
+`--limit N` limita el número de alumnos. El comando requiere permisos de profesorado (`moodle/grade:viewall`); si la cuenta no puede ver todas las calificaciones, falla con código 4. Si el curso usa grupos y tu cuenta pertenece a uno, Moodle puede limitar el informe a ese grupo.
+
 ## Manejo del foro de noticias de Moovi
 
 Moovi crea automáticamente en cada materia un foro de noticias al que se suscriben obligatoriamente todos los participantes. Se usa para enviar avisos al alumnado.
@@ -280,7 +308,7 @@ En `--format raw` se usa `message_text` aplanado a una línea para no romper el 
 | `--format json` | JSON por `stdout`, pensado para agentes y scripts. |
 | `--format raw` | CSV plano, pensado para componer con `grep`, `sort`, `cut` o `awk`. |
 | `--json` | Alias de `--format json`. |
-| `--limit N` | Limita el número de elementos de los listados. |
+| `--limit N` | Limita el número de elementos de los listados (en `grades`, alumnos). |
 
 Con `--format json`, la estructura usa los nombres del dominio (`short_name`, `full_name`, `due_date`...). **El HTML de Moodle se conserva tal cual**; la tabla y el CSV lo convierten a texto. Cuando un campo HTML necesita una versión legible en JSON, se añade como `<campo>_text` sin sustituir al original (`summary_text`, `message_text`).
 
@@ -307,6 +335,12 @@ moovi participants 1686 --format raw | tail -n +2 | sort -t, -k4
 # Tareas ordenadas por fecha de entrega
 moovi assignments 1686 --format raw | tail -n +2 | sort -t, -k4
 
+# Descargar todas las notas de un curso
+moovi grades 1686 --format raw > notas.csv
+
+# Notas de un grupo concreto
+moovi grades 6912 --json | jq '.[] | select(any(.groups[]; .name == "DAGSS_2"))'
+
 # Quedarse solo con el shortname de los cursos
 moovi courses --format raw | tail -n +2 | cut -d, -f2
 
@@ -326,6 +360,7 @@ Columnas de `--format raw`:
 | `contents` | `section_id, section_name, summary_text, modules` |
 | `participants` | `id, id_number, first_name, last_name, groups, roles, last_access, email` |
 | `assignments` | `id, course_id, name, due_date, cutoff_date, max_grade` |
+| `grades` | `id, id_number, last_name, first_name, groups, <calificación 1>, ...` |
 | `announcements` | `id, created, author, subject, num_replies, pinned, locked` |
 | `announcement-content` | `id, discussion_id, subject, author, created, modified, message_text` |
 
@@ -386,6 +421,8 @@ Si no tienes contraseña, renueva `MOOVI_TOKEN`.
 
 La cuenta no tiene permisos para esa función en ese curso (por ejemplo, no eres profesor del curso). Comprueba el rol en Moovi.
 
+En `grades`, este error suele indicar que la cuenta no es profesor/a del curso o no tiene la capacidad `moodle/grade:viewall`.
+
 **Error de red o HTTP 5xx**
 
 Moovi no responde o está en mantenimiento. La CLI reintenta una vez los errores 5xx; si persiste, espera y vuelve a intentarlo.
@@ -397,6 +434,7 @@ Moovi no responde o está en mantenimiento. La CLI reintenta una vez los errores
 - Un agente no debe pedirte la contraseña por chat: si no hay sesión, debe indicarte que ejecutes `moovi login`.
 - El cliente limita las funciones a una lista de solo lectura.
 - `participants` oculta los correos salvo que uses `--emails`; el `id_number` de UVigo se muestra por defecto porque es el identificador que usa Moovi en su interfaz de participantes.
+- `grades` descarga las calificaciones de todo el alumnado del curso. Trátalas según la normativa de protección de datos y no las vuelques en el chat sin necesidad.
 - Los datos de alumnado que consultes pueden acabar en el contexto de un agente o en los registros de tu terminal. Pide solo lo necesario y no vuelques listados completos sin motivo.
 
 ## Desarrollo

@@ -13,12 +13,16 @@ from moovi.domain.models import (
     Assignment,
     Course,
     Forum,
+    Grade,
+    Gradebook,
+    GradeItem,
     Group,
     Module,
     Participant,
     Role,
     Section,
     SiteInfo,
+    StudentGrades,
 )
 
 
@@ -179,6 +183,61 @@ def _map_assignment(item: Mapping[str, Any], course_id: int) -> Assignment:
         cutoff_date=timestamp(item.get("cutoffdate")),
         max_grade=max_grade,
     )
+
+
+def map_gradebook(data: object) -> Gradebook:
+    if not isinstance(data, Mapping):
+        return Gradebook(0)
+    users = _items(data.get("usergrades"))
+    ordered: dict[int, GradeItem] = {}
+    parsed: list[tuple[Mapping[str, Any], list[tuple[GradeItem, Grade]]]] = []
+    for user in users:
+        entries: list[tuple[GradeItem, Grade]] = []
+        for raw in _items(user.get("gradeitems")):
+            item, grade = _map_grade_entry(raw)
+            ordered.setdefault(item.id, item)
+            entries.append((item, grade))
+        parsed.append((user, entries))
+    items = tuple(ordered.values())
+    students = []
+    for user, entries in parsed:
+        by_id = {item.id: grade for item, grade in entries}
+        students.append(
+            StudentGrades(
+                user_id=int(user.get("userid", 0) or 0),
+                full_name=str(user.get("userfullname") or ""),
+                id_number=str(user.get("useridnumber") or "").strip() or None,
+                grades=tuple(by_id.get(item.id) for item in items),
+            )
+        )
+    course_id = int(users[0].get("courseid", 0) or 0) if users else 0
+    return Gradebook(course_id=course_id, items=items, students=tuple(students))
+
+
+def _map_grade_entry(raw: Mapping[str, Any]) -> tuple[GradeItem, Grade]:
+    item = GradeItem(
+        id=int(raw.get("id", 0) or 0),
+        name=str(raw.get("itemname") or "").strip(),
+        type=str(raw.get("itemtype") or ""),
+        module=str(raw.get("itemmodule") or "") or None,
+        instance=int(raw.get("iteminstance", 0) or 0),
+        min_grade=_optional_float(raw.get("grademin")),
+        max_grade=_optional_float(raw.get("grademax")),
+    )
+    grade = Grade(
+        raw=_optional_float(raw.get("graderaw")),
+        formatted=str(raw.get("gradeformatted") or ""),
+        hidden=_as_bool(raw.get("gradeishidden")),
+        overridden=_as_bool(raw.get("gradeisoverridden")),
+    )
+    return item, grade
+
+
+def _optional_float(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
 
 
 def map_forums(data: object) -> list[Forum]:

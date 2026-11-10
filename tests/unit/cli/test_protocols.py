@@ -8,6 +8,7 @@ from moovi.cli.tables import (
     AssignmentsTable,
     ContentsTable,
     CoursesTable,
+    GradesTable,
     ParticipantsTable,
     SiteInfoTable,
 )
@@ -21,6 +22,7 @@ def test_tables_declare_the_table_protocol() -> None:
         ContentsTable,
         ParticipantsTable,
         AssignmentsTable,
+        GradesTable,
         AnnouncementsTable,
         AnnouncementContentTable,
     ):

@@ -71,6 +71,23 @@ def test_nested_params_use_moodle_notation(fake_moodle) -> None:
     assert params["moodlewsrestformat"] == "json"
 
 
+def test_grade_items(fake_moodle) -> None:
+    gradebook = client(fake_moodle).grade_items(Token("test-token"), 101)
+
+    assert [item.name for item in gradebook.items] == [
+        "Práctica 1",
+        "Examen",
+        "Total del curso",
+        "Práctica 2",
+        "Práctica 3",
+    ]
+    assert gradebook.students[0].grades[0].raw == 8.5
+    _, params = fake_moodle.requests[-1]
+    assert params["wsfunction"] == "gradereport_user_get_grade_items"
+    assert params["courseid"] == "101"
+    assert params["userid"] == "0"
+
+
 def test_course_forums(fake_moodle) -> None:
     forums = client(fake_moodle).course_forums(Token("test-token"), 101)
 

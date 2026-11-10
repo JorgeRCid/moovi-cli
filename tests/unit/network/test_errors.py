@@ -29,6 +29,7 @@ def test_maps_invalid_token() -> None:
     [
         "accessexception",
         "nopermissions",
+        "nopermissiontoviewgrades",
         "required_capability_exception",
         "webservice_access_exception",
     ],

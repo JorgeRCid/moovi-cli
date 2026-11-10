@@ -264,6 +264,120 @@ def test_assignments_raw_csv(run_cli, credentials) -> None:
     assert rows[1][2] == "Práctica 1"
 
 
+def test_grades_json(run_cli, credentials) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+
+    result = run_cli("grades", "101", "--json", extra_env=credentials)
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert [student["last_name"] for student in data] == ["Alumna", "Grupo"]
+    ana = data[0]
+    assert ana["first_name"] == "Ana"
+    assert ana["id"] == 7
+    assert ana["id_number"] == "297275"
+    assert ana["full_name"] == "Ana Alumna"
+    assert ana["groups"] == [
+        {"id": 146, "name": "PROII_1 (Laboratorio)"},
+        {"id": 147, "name": "MODALIDAD_GLOBAL"},
+    ]
+    assert data[1]["groups"] == []
+    assert ana["Práctica 1"]["raw"] == 8.5
+    assert ana["Práctica 1"]["formatted"] == "8.50"
+    assert ana["Examen"]["raw"] == 0
+    assert ana["Total del curso"]["raw"] == 4.25
+    assert ana["Práctica 2"] is None
+    assert "Práctica 3" not in ana
+
+
+def test_grades_raw_csv_is_compact_by_default(run_cli, credentials) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+
+    result = run_cli("grades", "101", "--format", "raw", extra_env=credentials)
+
+    assert result.returncode == 0, result.stderr
+    rows = list(csv.reader(io.StringIO(result.stdout)))
+    assert rows[0] == [
+        "id",
+        "id_number",
+        "last_name",
+        "first_name",
+        "groups",
+        "Práctica 1",
+        "Examen",
+        "Total del curso",
+        "Práctica 2",
+    ]
+    assert rows[1] == [
+        "7",
+        "297275",
+        "Alumna",
+        "Ana",
+        "PROII_1 (Laboratorio);MODALIDAD_GLOBAL",
+        "8.5",
+        "0",
+        "4.25",
+        "",
+    ]
+    assert rows[2] == ["9", "654321", "Grupo", "Sin", "", "", "7", "7", "9"]
+
+
+def test_grades_all_items_includes_empty_columns(run_cli, credentials) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+
+    result = run_cli(
+        "grades", "101", "--all-items", "--format", "raw", extra_env=credentials
+    )
+
+    assert result.returncode == 0, result.stderr
+    rows = list(csv.reader(io.StringIO(result.stdout)))
+    assert rows[0][-1] == "Práctica 3"
+    assert rows[1][-1] == ""
+    assert rows[2][-1] == ""
+
+
+def test_grades_limit_limits_students(run_cli, credentials) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+
+    result = run_cli(
+        "grades", "101", "--limit", "1", "--json", extra_env=credentials
+    )
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert len(data) == 1
+    assert data[0]["last_name"] == "Alumna"
+
+
+def test_grades_permission_error_exit_code(
+    run_cli, credentials, fake_moodle
+) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+    fake_moodle.forbidden.add("gradereport_user_get_grade_items")
+
+    result = run_cli("grades", "101", extra_env=credentials)
+
+    assert result.returncode == 4
+    assert "denegado" in result.stderr.lower()
+
+
+def test_grades_table(run_cli, credentials) -> None:
+    assert run_cli("login", extra_env=credentials).returncode == 0
+
+    result = run_cli("grades", "101", extra_env=credentials)
+
+    assert result.returncode == 0, result.stderr
+    assert "APELLIDOS" in result.stdout
+    assert "NOMBRE" in result.stdout
+    assert "ID NUMBER" in result.stdout
+    assert "GRUPOS" in result.stdout
+    assert "PROII_1 (Laboratorio); MODALIDAD_GLOBAL" in result.stdout
+    assert "Práctica 1" in result.stdout
+    assert "8.50" in result.stdout
+    assert "Total del curso" in result.stdout
+    assert "Práctica 3" not in result.stdout
+
+
 def test_announcement_content_json(run_cli, credentials) -> None:
     assert run_cli("login", extra_env=credentials).returncode == 0
 

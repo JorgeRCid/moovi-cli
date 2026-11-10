@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from moovi.cli.tables.base import Column, RichValue, Table
+from moovi.cli.tables.groups import groups_value
 from moovi.cli.tables.roles import role_key, role_label
-from moovi.domain.models import Group, Participant, Role
+from moovi.domain.models import Participant, Role
 
 
 class ParticipantsTable(Table):
@@ -39,7 +40,7 @@ class ParticipantsTable(Table):
                 participant.first_name,
                 participant.last_name,
                 participant.full_name,
-                _groups_value(participant.groups),
+                groups_value(participant.groups),
                 _roles_value(participant.roles),
                 participant.last_access,
                 participant.email,
@@ -50,16 +51,6 @@ class ParticipantsTable(Table):
     @property
     def single_row(self) -> bool:
         return False
-
-
-def _groups_value(groups: Sequence[Group]) -> RichValue:
-    return RichValue(
-        raw=groups,
-        text="; ".join(group.name for group in groups if group.name),
-        csv_text=";".join(
-            group.name.replace(";", "#") for group in groups if group.name
-        ),
-    )
 
 
 def _roles_value(roles: Sequence[Role]) -> RichValue:
