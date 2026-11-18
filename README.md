@@ -8,34 +8,27 @@ Permite listar tus cursos, ver el contenido de una asignatura, consultar el alum
 
 ## Requisitos
 
-- [conda](https://docs.conda.io/) (Miniconda o Anaconda).
+- [uv](https://docs.astral.sh/uv/). Descarga Python 3.12 o superior si no lo tienes.
 - Una cuenta de Moovi con contraseña propia. Si tu cuenta solo admite SSO, consulta la sección [Token manual](#token-manual-sso).
 
 ## Instalación
 
 ```bash
-conda env create -f environment.yml
-conda activate moovi
-pip install -e .
+uv sync
 ```
 
-> **Entorno activo:** `moovi` solo está disponible dentro del entorno conda.
-> Si trabajas en una shell persistente, usa `conda activate moovi`.
-> Si cada comando se ejecuta en una shell nueva (agentes, scripts, CI), usa
-> `conda run -n moovi --no-capture-output moovi ...`.
+Crea `.venv/` e instala `moovi` en modo editable junto con las dependencias de desarrollo.
+
+> **Cómo ejecutar `moovi`:** desde la raíz del repositorio, usa `uv run moovi ...`.
+> No hace falta activar nada, así que funciona igual en una shell nueva (agentes, scripts, CI).
+> Si prefieres llamar a `moovi` a secas, activa el entorno con `source .venv/bin/activate`
+> o instala la herramienta globalmente con `uv tool install .`.
 
 Comprueba que funciona:
 
 ```bash
-conda activate moovi
-moovi --version
-moovi --help
-```
-
-O sin activar el entorno:
-
-```bash
-conda run -n moovi --no-capture-output moovi --version
+uv run moovi --version
+uv run moovi --help
 ```
 
 ## Configuración
@@ -81,7 +74,7 @@ Con `MOOVI_TOKEN` no hace falta `MOOVI_PASSWORD`.
 ## Uso rápido
 
 ```bash
-conda activate moovi   # o usa `conda run -n moovi --no-capture-output moovi ...`
+# Con `uv run` delante, o con el entorno activado / `uv tool install .`, basta `moovi ...`
 moovi login
 moovi courses
 moovi contents 12345
@@ -387,13 +380,13 @@ Con `--format json` (o `--json`), los errores se escriben en `stderr` como:
 
 **`moovi: command not found`**
 
-El entorno no está activo. Usa `conda activate moovi` o, desde una shell nueva:
+El entorno no está activo. Usa `uv run` desde la raíz del repositorio:
 
 ```bash
-conda run -n moovi --no-capture-output moovi courses --json
+uv run moovi courses --json
 ```
 
-Si sigue fallando, entra en el entorno y ejecuta `pip install -e .`.
+Si sigue fallando, ejecuta `uv sync`.
 
 **`Credenciales incorrectas`**
 
@@ -440,8 +433,8 @@ Moovi no responde o está en mantenimiento. La CLI reintenta una vez los errores
 ## Desarrollo
 
 ```bash
-pytest                # unitarios, integración y e2e con Moodle falso
-pytest -m live        # contra Moovi real (requiere .env y MOOVI_E2E=1)
+uv run pytest                # unitarios, integración y e2e con Moodle falso
+uv run pytest -m live        # contra Moovi real (requiere .env y MOOVI_E2E=1)
 ```
 
 Antes de tocar código, lee [`docs/architecture.md`](docs/architecture.md) y [`AGENTS.md`](AGENTS.md).

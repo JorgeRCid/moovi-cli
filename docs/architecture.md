@@ -257,4 +257,4 @@ La conversión vive en `cli/text.py` (`html_to_text`, `flatten_text`). Las tabla
 | Una llamada para todo el libro | `userid=0` devuelve todos los usuarios y calificaciones; evita N llamadas. |
 | Columnas dinámicas en `grades` | El número de calificaciones depende del curso; la tabla se construye desde `Gradebook`. |
 | Moodle falso en tests | E2E deterministas y sin credenciales reales. |
-| `conda` | Entorno reproducible elegido por el usuario. |
+| `uv` | Entorno reproducible con `uv.lock`; `uv run moovi` funciona en shells nuevas sin activar nada. |

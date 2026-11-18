@@ -9,9 +9,8 @@ CLI de solo lectura sobre la API oficial de Moovi. No usa scraping y no modifica
 
 ## Requisitos
 
-- La CLI `moovi` debe estar disponible en el entorno conda `moovi`.
-- Si cada comando se ejecuta en una shell nueva, no uses `conda activate`: usa
-  `conda run -n moovi --no-capture-output moovi ...`.
+- La CLI `moovi` debe estar disponible en el PATH (`uv tool install .` o entorno `.venv` activo).
+- Si no lo está, ejecuta desde la raíz del repositorio con `uv run moovi ...`; no requiere activar nada.
 - Debe haber un token válido en `~/.cache/moovi/token.json` (se crea con `moovi login`) o `MOOVI_TOKEN` en el entorno. `.env` solo necesita `MOOVI_URL` y, opcionalmente, `MOOVI_USER`.
 - Ejecuta desde la raíz del repositorio para que se lea `.env`, o exporta las variables `MOOVI_*`.
 - **Nunca pidas la contraseña por chat ni imprimas `.env` o el token.** Si no hay sesión, pide al usuario que ejecute `moovi login` en su terminal. No uses `--no-input` salvo que las credenciales ya estén en el entorno.
