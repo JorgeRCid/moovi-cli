@@ -16,6 +16,7 @@ from moovi.domain.models import (
     Assignment,
     Course,
     Forum,
+    Gradebook,
     Participant,
     Section,
     SiteInfo,
@@ -128,6 +129,11 @@ class MoodleSession:
     def assignments(self, course_ids: Sequence[int]) -> list[Assignment]:
         return self._call(
             lambda token: self._gateway.assignments(token, course_ids)
+        )
+
+    def grade_items(self, course_id: int) -> Gradebook:
+        return self._call(
+            lambda token: self._gateway.grade_items(token, course_id)
         )
 
     def course_forums(self, course_id: int) -> list[Forum]:

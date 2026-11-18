@@ -17,7 +17,7 @@ cli ──► logic ──► domain
 
 | Capa | Responsabilidad | Puede importar |
 |---|---|---|
-| `domain` | Modelos, value objects, errores e invariantes. Sin I/O. `Participant` guarda `first_name`, `last_name` y `groups`; `full_name` es una propiedad derivada. | Solo stdlib. |
+| `domain` | Modelos, value objects, errores e invariantes. Sin I/O. `Participant` guarda `id_number`, `first_name`, `last_name` y `groups`; `full_name` es una propiedad derivada. | Solo stdlib. |
 | `logic` | Casos de uso, sesión autenticada y puertos. | `domain`, `logic`. |
 | `network` | Cliente REST de Moodle, mapeo de respuestas y errores. | `domain`, `logic`, stdlib. |
 | `infra` | Configuración (`.env`) y persistencia del token. | `domain`, `logic`, stdlib. |
@@ -30,13 +30,13 @@ La regla se comprueba automáticamente en `tests/unit/test_architecture.py`: si 
 ```
 src/moovi/
 ├── domain/
-│   ├── models.py      # SiteInfo, Course, Section, Module, Role, Participant, Assignment, Forum, Announcement
+│   ├── models.py      # SiteInfo, Course, Section, Module, Role, Participant, Assignment, Gradebook, Forum, Announcement
 │   ├── values.py      # Token (repr redactado)
 │   └── errors.py      # errores de dominio
 ├── logic/
 │   ├── ports.py       # MoodleGateway, TokenStore (Protocol)
 │   ├── session.py     # MoodleSession: token, login y reintento
-│   └── services/      # AuthService, CatalogService, PeopleService, AssignmentService, AnnouncementService
+│   └── services/      # AuthService, CatalogService, PeopleService, AssignmentService, GradeService, AnnouncementService
 ├── network/
 │   ├── rest.py        # MoodleRestClient(MoodleGateway)
 │   ├── params.py      # flatten a notación Moodle
@@ -121,6 +121,7 @@ class MoodleGateway(Protocol):
     def course_contents(self, token: Token, course_id: int) -> list[Section]: ...
     def enrolled_users(self, token: Token, course_id: int) -> list[Participant]: ...
     def assignments(self, token: Token, course_ids: Sequence[int]) -> list[Assignment]: ...
+    def grade_items(self, token: Token, course_id: int) -> Gradebook: ...
     def course_forums(self, token: Token, course_id: int) -> list[Forum]: ...
     def forum_discussions(
         self, token: Token, forum_id: int, limit: int
@@ -151,7 +152,7 @@ class TokenStore(Protocol):
 | `ConfigError` | Falta configuración o URL inválida. | 2 |
 | `InvalidCredentialsError` | `invalidlogin`. | 2 |
 | `InvalidTokenError` | `invalidtoken` (tras reintentar). | 2 |
-| `AuthorizationError` | `accessexception`, `nopermissions`... | 4 |
+| `AuthorizationError` | `accessexception`, `nopermissions`, `nopermissiontoviewgrades`... | 4 |
 | `ReadOnlyViolation` | Función fuera de la allowlist. | 4 |
 | `NetworkError` | HTTP 5xx, DNS, timeout. | 3 |
 | `ApiError` | Cualquier otro `errorcode`. | 3 |
@@ -176,6 +177,35 @@ Moodle devuelve **HTTP 200** en sus errores; el discriminante es `errorcode` (o 
 `AnnouncementService` localiza el foro de noticias por `type == "news"`, nunca por el nombre. Si hay varios candidatos, prefiere el que tiene `forcesubscribe == 1`; si el empate persiste, pide `--forum-id`. Un id explícito también permite consultar otro foro del curso.
 
 La lectura usa `mod_forum_get_forums_by_courses` y `mod_forum_get_forum_discussions`, ambas en la allowlist de solo lectura. El contenido de un anuncio se obtiene con `mod_forum_get_discussion_post` usando el id del post que muestra el listado. La publicación queda fuera de esta fase: sería `mod_forum_add_discussion` desde una superficie de escritura separada.
+
+## Libro de calificaciones
+
+`GradeService` obtiene el libro completo con una sola llamada a
+`gradereport_user_get_grade_items` usando `userid=0`. Para una cuenta con
+`moodle/grade:viewall`, Moodle devuelve todos los usuarios y todas las
+calificaciones del curso en esa llamada. Después cruza los `userid` con
+`core_enrol_get_enrolled_users` para tener nombre y apellidos separados y el
+`idnumber` de UVigo.
+
+El caso de uso devuelve un `Gradebook` con la lista canónica de `GradeItem`
+(actividades, elementos manuales, categorías y total del curso) y una fila por
+alumno con las notas alineadas. También conserva los grupos de cada alumno,
+copiados de `core_enrol_get_enrolled_users`, y los expone como columna
+`groups`. Por defecto elimina las columnas sin ninguna nota; `--all-items` las
+conserva. La tabla de presentación genera una columna dinámica por `GradeItem`,
+con el nombre del libro como cabecera. Los nombres duplicados se desambiguan con
+un sufijo. Moodle no devuelve el nombre de las categorías en esta función, así
+que se etiquetan como `Categoría <id>`; el total del curso se etiqueta como
+`Total del curso`.
+
+El CSV usa `graderaw` (número bruto) cuando existe y, si no, el texto limpio de
+Moodle. Así las notas numéricas no dependen del idioma de la interfaz ni del
+separador decimal configurado.
+
+Si el curso usa grupos y la cuenta pertenece a uno, Moodle puede fijar el
+`groupid` del informe al grupo de la cuenta. Es comportamiento de
+`check_report_access`, no de la CLI; se documenta para no confundirlo con una
+pérdida de datos.
 
 ## Modo de solo lectura
 
@@ -224,5 +254,7 @@ La conversión vive en `cli/text.py` (`html_to_text`, `flatten_text`). Las tabla
 | Valores de fila como objetos | JSON conserva números, fechas y listas; tabla/CSV los convierten a texto. |
 | JSON conserva el HTML original | La tabla y el CSV usan texto legible; los campos `<campo>_text` son adicionales. |
 | Sin filtros de conveniencia | Se componen con `grep`/`sort`/`awk` sobre `--format raw` o `jq` sobre JSON. |
+| Una llamada para todo el libro | `userid=0` devuelve todos los usuarios y calificaciones; evita N llamadas. |
+| Columnas dinámicas en `grades` | El número de calificaciones depende del curso; la tabla se construye desde `Gradebook`. |
 | Moodle falso en tests | E2E deterministas y sin credenciales reales. |
 | `uv` | Entorno reproducible con `uv.lock`; `uv run moovi` funciona en shells nuevas sin activar nada. |

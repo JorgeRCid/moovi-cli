@@ -6,6 +6,7 @@ from moovi.network.mappers import (
     map_assignments,
     map_courses,
     map_forums,
+    map_gradebook,
     map_participants,
     map_sections,
     map_site_info,
@@ -108,6 +109,7 @@ def test_maps_participants_with_empty_role_name() -> None:
                 ],
                 "lastcourseaccess": 1700000000,
                 "email": "ana@uvigo.gal",
+                "idnumber": "297275",
             }
         ]
     )
@@ -125,6 +127,15 @@ def test_maps_participants_with_empty_role_name() -> None:
     ]
     assert participant.last_access is not None
     assert participant.email == "ana@uvigo.gal"
+    assert participant.id_number == "297275"
+
+
+def test_maps_participant_without_id_number() -> None:
+    [participant] = map_participants(
+        [{"id": 9, "firstname": "Sin", "lastname": "ID", "idnumber": ""}]
+    )
+
+    assert participant.id_number is None
 
 
 def test_maps_participants_with_role_name() -> None:
@@ -170,6 +181,87 @@ def test_maps_participant_without_groups() -> None:
     )
 
     assert participant.groups == ()
+
+
+def test_maps_gradebook_with_aligned_items() -> None:
+    gradebook = map_gradebook(
+        {
+            "usergrades": [
+                {
+                    "courseid": 101,
+                    "userid": 7,
+                    "userfullname": "Ana Alumna",
+                    "useridnumber": "297275",
+                    "gradeitems": [
+                        {
+                            "id": 601,
+                            "itemname": "Práctica 1",
+                            "itemtype": "mod",
+                            "itemmodule": "assign",
+                            "iteminstance": 501,
+                            "grademin": 0,
+                            "grademax": 10,
+                            "graderaw": 8.5,
+                            "gradeformatted": "8.50",
+                        },
+                        {
+                            "id": 602,
+                            "itemname": "Examen",
+                            "itemtype": "manual",
+                            "grademin": 0,
+                            "grademax": 10,
+                            "gradeformatted": "-",
+                        },
+                    ],
+                },
+                {
+                    "courseid": 101,
+                    "userid": 9,
+                    "userfullname": "Sin Grupo",
+                    "useridnumber": "",
+                    "gradeitems": [
+                        {
+                            "id": 602,
+                            "itemname": "Examen",
+                            "itemtype": "manual",
+                            "grademin": 0,
+                            "grademax": 10,
+                            "graderaw": 7,
+                            "gradeformatted": "7.00",
+                        },
+                        {
+                            "id": 601,
+                            "itemname": "Práctica 1",
+                            "itemtype": "mod",
+                            "itemmodule": "assign",
+                            "iteminstance": 501,
+                            "grademin": 0,
+                            "grademax": 10,
+                            "gradeformatted": "-",
+                        },
+                    ],
+                },
+            ]
+        }
+    )
+
+    assert gradebook.course_id == 101
+    assert [item.name for item in gradebook.items] == ["Práctica 1", "Examen"]
+    assert gradebook.items[0].module == "assign"
+    assert gradebook.items[0].max_grade == 10.0
+    assert gradebook.students[0].user_id == 7
+    assert gradebook.students[0].full_name == "Ana Alumna"
+    assert gradebook.students[0].id_number == "297275"
+    assert gradebook.students[0].grades[0].raw == 8.5
+    assert gradebook.students[0].grades[1].has_value is False
+    assert gradebook.students[1].id_number is None
+    assert gradebook.students[1].grades[0].has_value is False
+    assert gradebook.students[1].grades[1].raw == 7.0
+
+
+def test_maps_gradebook_tolerates_bad_shapes() -> None:
+    assert map_gradebook(None).items == ()
+    assert map_gradebook({}).students == ()
 
 
 def test_maps_assignments() -> None:

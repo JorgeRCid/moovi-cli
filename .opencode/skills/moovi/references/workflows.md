@@ -95,6 +95,36 @@ moovi assignments 12345 --json \
   | jq 'sort_by(.due_date // "9999")'
 ```
 
+## Descargar todas las notas de un curso
+
+```bash
+moovi grades 12345 --format raw > notas.csv
+```
+
+Por defecto solo incluye calificaciones con al menos una nota. Para incluir todas las columnas del libro:
+
+```bash
+moovi grades 12345 --all-items --format raw > notas.csv
+```
+
+Las primeras columnas son `id`, `id_number`, `last_name`, `first_name`, `groups`; después, una por calificación. Requiere permisos de profesorado.
+
+## Filtrar las notas de un grupo
+
+```bash
+moovi grades 6912 --json \
+  | jq '.[] | select(any(.groups[]; .name == "DAGSS_2"))'
+```
+
+En CSV, la columna `groups` va separada por `;`. Para un filtro rápido:
+
+```bash
+moovi grades 6912 --format raw \
+  | awk -F, 'NR==1 || $5 ~ /(^|;)DAGSS_2(;|$)/'
+```
+
+Si los nombres de grupo pueden contener comas, usa `--json` + `jq`.
+
 ## Mostrar un resumen al usuario
 
 1. Ejecuta el comando con `--json`.

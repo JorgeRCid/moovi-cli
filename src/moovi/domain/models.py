@@ -64,6 +64,7 @@ class Participant:
     roles: tuple[Role, ...] = ()
     last_access: datetime | None = None
     email: str | None = None
+    id_number: str | None = None
 
     @property
     def full_name(self) -> str:
@@ -80,6 +81,47 @@ class Assignment:
     due_date: datetime | None = None
     cutoff_date: datetime | None = None
     max_grade: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GradeItem:
+    id: int
+    name: str
+    type: str
+    module: str | None = None
+    instance: int = 0
+    min_grade: float | None = None
+    max_grade: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Grade:
+    raw: float | None = None
+    formatted: str = ""
+    hidden: bool = False
+    overridden: bool = False
+
+    @property
+    def has_value(self) -> bool:
+        return self.raw is not None or self.formatted.strip() not in {"", "-"}
+
+
+@dataclass(frozen=True, slots=True)
+class StudentGrades:
+    user_id: int
+    full_name: str
+    first_name: str = ""
+    last_name: str = ""
+    id_number: str | None = None
+    groups: tuple[Group, ...] = ()
+    grades: tuple[Grade | None, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Gradebook:
+    course_id: int
+    items: tuple[GradeItem, ...] = ()
+    students: tuple[StudentGrades, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

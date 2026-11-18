@@ -31,11 +31,14 @@ Moovi es Moodle 4.5 y expone los servicios web oficiales. No se usa scraping.
 | `core_course_get_contents` | `courseid` | secciones y módulos |
 | `core_enrol_get_enrolled_users` | `courseid` | personas y roles |
 | `mod_assign_get_assignments` | `courseids[0]` | tareas por curso |
+| `gradereport_user_get_grade_items` | `courseid`, `userid=0` | libro completo: usuarios y calificaciones |
 | `mod_forum_get_forums_by_courses` | `courseids[0]` | foros del curso, incluido `type="news"` |
 | `mod_forum_get_forum_discussions` | `forumid`, `sortorder`, `page`, `perpage` | anuncios del foro de noticias |
 | `mod_forum_get_discussion_post` | `postid` | contenido de un anuncio |
 
 Todas están en la allowlist de `network/rest.py`. La CLI no expone un `call` genérico.
+
+`gradereport_user_get_grade_items` con `userid=0` devuelve todos los usuarios y todas las calificaciones del curso si la cuenta tiene `moodle/grade:viewall`. Si no, Moodle responde con `nopermissiontoviewgrades` (código de salida 4).
 
 ## Añadir una función
 

@@ -11,6 +11,7 @@ from moovi.domain.models import (
     Assignment,
     Course,
     Forum,
+    Gradebook,
     Participant,
     Section,
     SiteInfo,
@@ -40,6 +41,14 @@ class MoodleGateway(Protocol):
     def assignments(
         self, token: Token, course_ids: Sequence[int]
     ) -> list[Assignment]: ...
+
+    def grade_items(self, token: Token, course_id: int) -> Gradebook:
+        """Devuelve el libro de calificaciones completo del curso.
+
+        Moodle devuelve todos los usuarios y todas las calificaciones en una
+        sola llamada cuando ``userid=0``.
+        """
+        ...
 
     def course_forums(self, token: Token, course_id: int) -> list[Forum]: ...
 
